@@ -1,10 +1,12 @@
 import React from 'react';
 import { OPERATORS, OperatorType } from '../core/operators';
 import { InventoryAllowance } from '../data/levels';
+import { Language, UI_STRINGS } from '../i18n';
 
 interface InventoryDockProps {
   inventory: InventoryAllowance[];
   remainingCounts: Record<OperatorType, number>;
+  lang: Language;
   onSpawnGate: (type: OperatorType, dropCoords?: { x: number; y: number }) => void;
   canvasRef: React.RefObject<HTMLDivElement | null>;
 }
@@ -12,9 +14,12 @@ interface InventoryDockProps {
 export const InventoryDock: React.FC<InventoryDockProps> = ({
   inventory,
   remainingCounts,
+  lang,
   onSpawnGate,
   canvasRef,
 }) => {
+  const t = UI_STRINGS[lang];
+
   const handleDragStart = (
     e: React.PointerEvent<HTMLButtonElement>,
     type: OperatorType,
@@ -58,12 +63,12 @@ export const InventoryDock: React.FC<InventoryDockProps> = ({
 
   return (
     <footer
-      aria-label="Logic gate inventory dock"
+      aria-label={t.dockAria}
       className="relative z-30 flex flex-wrap items-center justify-between gap-4 border-t-2 border-[#2B323B] bg-[#11161C] px-5 py-3 select-none"
     >
       <div className="flex items-center gap-3 overflow-x-auto">
         <span className="font-mono text-[11px] font-bold tracking-wider text-[#8B98A8] whitespace-nowrap">
-          GATE STOCK:
+          {t.gateStockLabel}
         </span>
 
         {inventory.map((item) => {
@@ -77,7 +82,7 @@ export const InventoryDock: React.FC<InventoryDockProps> = ({
               type="button"
               disabled={depleted}
               data-testid={`dock-gate-${item.type}`}
-              aria-label={`Spawn ${def.label} gate (${remaining} remaining)`}
+              aria-label={t.spawnGateAria(def.label, remaining)}
               onPointerDown={(e) => handleDragStart(e, item.type, remaining)}
               onClick={() => onSpawnGate(item.type)}
               className={`group flex items-center gap-3 rounded-[2px] border-2 px-3.5 py-2 text-left transition-colors whitespace-nowrap ${
@@ -132,14 +137,15 @@ export const InventoryDock: React.FC<InventoryDockProps> = ({
       </div>
 
       <div className="hidden lg:flex items-center gap-3 font-mono text-[11px] text-[#6E7A8A] whitespace-nowrap">
-        <span>CLICK OR DRAG GATE TO PLACE</span>
+        <span>{t.tipPlace}</span>
         <span aria-hidden="true">·</span>
-        <span>CONNECT PINS TO WIRE</span>
+        <span>{t.tipConnect}</span>
         <span aria-hidden="true">·</span>
-        <span>CLICK WIRE TO CUT</span>
+        <span>{t.tipCut}</span>
         <span aria-hidden="true">·</span>
-        <span>DEL REMOVES GATE</span>
+        <span>{t.tipDelete}</span>
       </div>
     </footer>
   );
 };
+

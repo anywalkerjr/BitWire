@@ -16,6 +16,15 @@ import {
   CircuitWire,
 } from './graphEngine';
 import { CHAPTER_GROUPS, LEVELS } from '../data/levels';
+import {
+  CHAPTER_HEADINGS,
+  formatConstraintDescription,
+  formatTestCaseLabel,
+  formatValidationError,
+  getLevelText,
+  LEVEL_TRANSLATIONS_RU,
+  UI_STRINGS,
+} from '../i18n';
 
 test('operators: bitmasking and all 8 gates on 4-bit width', () => {
   assert.equal(bitMask(4), 0b1111n);
@@ -604,3 +613,37 @@ test('levels: all 20 levels across Chapters 1, 2, 3, and 4 are mathematically so
   assert.equal(s20.testResults[1].result.targetValues.OUT2, 0xf0n);
   assert.equal(s20.isSolved, true);
 });
+
+test('i18n: EN and RU cover all 20 levels, 4 chapters, constraints, and validation errors', () => {
+  for (const level of LEVELS) {
+    assert.ok(LEVEL_TRANSLATIONS_RU[level.id], `Missing RU translation for ${level.id}`);
+    const enText = getLevelText(level, 'en');
+    const ruText = getLevelText(level, 'ru');
+    assert.ok(enText.title.length > 0 && enText.objective.length > 0);
+    assert.ok(ruText.title.length > 0 && ruText.objective.length > 0);
+  }
+
+  for (const group of CHAPTER_GROUPS) {
+    assert.ok(CHAPTER_HEADINGS.en[group.chapter].length > 0);
+    assert.ok(CHAPTER_HEADINGS.ru[group.chapter].length > 0);
+  }
+
+  for (const [key, value] of Object.entries(UI_STRINGS.ru)) {
+    if (typeof value === 'string') {
+      assert.ok(value.trim().length > 0, `Empty RU string for key ${key}`);
+    }
+  }
+
+  assert.equal(formatTestCaseLabel(0, 'en'), 'TEST 1');
+  assert.equal(formatTestCaseLabel(0, 'ru'), 'ТЕСТ 1');
+  assert.match(UI_STRINGS.ru.victoryAllTests(2), /ВСЕ 2 ТЕСТА ПРОЙДЕНЫ/);
+  assert.match(UI_STRINGS.ru.victoryAllTests(3), /ВСЕ 3 ТЕСТА ПРОЙДЕНЫ/);
+
+  const constraint = { maxOnes: 1, description: 'MAX 1 ONE (popcount <= 1)' };
+  assert.match(formatConstraintDescription(constraint, 'ru'), /МАКС\. 1 ЕДИНИЦА/);
+
+  const badOnes = validateVariableInput('1100', 'BIN', 4, constraint);
+  const ruErr = formatValidationError(badOnes, '1100', 'BIN', 4, constraint, 'ru');
+  assert.ok(ruErr && /превышает лимит/.test(ruErr));
+});
+

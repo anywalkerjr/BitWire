@@ -27,6 +27,13 @@ import {
   LEVELS,
   VariableKey,
 } from './data/levels';
+import {
+  formatTestCaseLabel,
+  getInitialLanguage,
+  Language,
+  saveLanguage,
+  UI_STRINGS,
+} from './i18n';
 import { soundEngine } from './utils/sound';
 
 const ALL_VAR_KEYS: readonly VariableKey[] = ['A', 'B', 'C'] as const;
@@ -158,9 +165,19 @@ export default function App() {
   const [levelIndex, setLevelIndex] = useState(0);
   const [activeTestIndex, setActiveTestIndex] = useState(0);
   const [radix, setRadix] = useState<Radix>('BIN');
+  const [lang, setLang] = useState<Language>(() => getInitialLanguage());
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [scanlines, setScanlines] = useState(true);
   const [muted, setMuted] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  const handleChangeLang = useCallback((nextLang: Language) => {
+    setLang(nextLang);
+    saveLanguage(nextLang);
+  }, []);
 
   const level = LEVELS[levelIndex];
 
@@ -485,7 +502,7 @@ export default function App() {
     (fromNodeId: string, toNodeId: string, toInputIndex: number) => {
       if (wouldCreateCycle(nodes, wires, fromNodeId, toNodeId)) {
         soundEngine.playError();
-        showStatus('[ERR] FEEDBACK LOOP BLOCKED // CIRCUIT MUST BE ACYCLIC');
+        showStatus(UI_STRINGS[lang].feedbackLoopError);
         return;
       }
 
@@ -504,7 +521,7 @@ export default function App() {
       });
       soundEngine.playWireConnect();
     },
-    [nodes, wires, showStatus]
+    [nodes, wires, showStatus, lang]
   );
 
   const handleDisconnectWire = useCallback((wireId: string) => {
@@ -550,12 +567,14 @@ export default function App() {
         currentLevelIndex={levelIndex}
         solvedLevelIds={solvedLevelIds}
         radix={radix}
+        lang={lang}
         drawerOpen={drawerOpen}
         anyVarHasError={anyVarHasError}
         scanlines={scanlines}
         muted={muted}
         onSelectLevel={(idx) => loadLevel(idx)}
         onChangeRadix={handleChangeRadix}
+        onChangeLang={handleChangeLang}
         onToggleDrawer={() => setDrawerOpen((o) => !o)}
         onResetLevel={() => loadLevel(levelIndex)}
         onToggleScanlines={() => setScanlines((s) => !s)}
@@ -566,8 +585,11 @@ export default function App() {
         open={drawerOpen}
         level={level}
         radix={radix}
+        lang={lang}
         activeTestLabel={
-          level.testCases && level.testCases.length > 0 ? activeTest.label : undefined
+          level.testCases && level.testCases.length > 0
+            ? formatTestCaseLabel(safeTestIndex, lang)
+            : undefined
         }
         activeSourceValues={activeTest.sourceValues}
         activeTargets={activeTargetsForDrawer}
@@ -581,6 +603,7 @@ export default function App() {
         level={level}
         hasNextLevel={levelIndex < LEVELS.length - 1}
         radix={radix}
+        lang={lang}
         nodes={nodes}
         wires={wires}
         evaluation={evaluation}
@@ -608,6 +631,7 @@ export default function App() {
       <InventoryDock
         inventory={level.inventory}
         remainingCounts={remainingCounts}
+        lang={lang}
         onSpawnGate={handleSpawnGate}
         canvasRef={canvasRef}
       />

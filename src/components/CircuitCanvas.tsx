@@ -17,6 +17,7 @@ import {
 import { OPERATORS } from '../core/operators';
 import { formatValue, Radix } from '../core/radix';
 import { LevelDefinition, VariableKey } from '../data/levels';
+import { formatTestCaseLabel, getLevelText, Language, UI_STRINGS } from '../i18n';
 
 interface PendingWire {
   originKind: 'output' | 'input';
@@ -31,6 +32,7 @@ interface CircuitCanvasProps {
   level: LevelDefinition;
   hasNextLevel: boolean;
   radix: Radix;
+  lang: Language;
   nodes: CircuitNode[];
   wires: CircuitWire[];
   evaluation: EvaluationResult;
@@ -69,6 +71,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
   level,
   hasNextLevel,
   radix,
+  lang,
   nodes,
   wires,
   evaluation,
@@ -323,11 +326,13 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
       : computeOrthogonalPath(pendingWire.pointerPoint, pendingWire.startPoint)
     : null;
 
+  const t = UI_STRINGS[lang];
+  const levelText = getLevelText(level, lang);
   const hasTestSuite = Boolean(level.testCases && level.testCases.length > 0);
   const is8BitBin = level.bits >= 8 && radix === 'BIN';
   const mandatoryWarningText = !testSuite.allGatesPlaced
-    ? `[!] TARGET MATCHED — USE REMAINING GATES TO VERIFY (${testSuite.remainingGateCount} LEFT IN STOCK)`
-    : '[!] TARGET MATCHED — CONNECT ALL PLACED GATES INTO CIRCUIT TO VERIFY';
+    ? t.mandatoryUnplaced(testSuite.remainingGateCount)
+    : t.mandatoryUnconnected;
 
   return (
     <main
@@ -344,18 +349,18 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="pointer-events-auto flex flex-wrap items-center gap-2 border border-[#2B323B] bg-[#0B0E11]/95 px-3 py-1.5 text-xs text-[#C9D1D9]">
             <span className="font-bold text-[#00FF66] whitespace-nowrap">
-              CH{level.chapter} • LVL {pad2(level.number)}
+              {t.chapterShort}{level.chapter} • {t.levelShort} {pad2(level.number)}
             </span>
             <span className="text-[#4B5868]" aria-hidden="true">
               /
             </span>
-            <span>{level.objective}</span>
+            <span>{levelText.objective}</span>
             {level.bits >= 8 && (
               <span
                 data-testid="badge-8bit"
                 className="border border-[#38BDF8] bg-[#38BDF8]/15 px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wide text-[#38BDF8] whitespace-nowrap"
               >
-                [8-BIT]
+                {t.badge8Bit}
               </span>
             )}
             {level.mustUseAllGates && (
@@ -363,7 +368,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                 data-testid="rule-use-all-gates"
                 className="border border-[#FFB000] bg-[#FFB000]/15 px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wide text-[#FFB000] whitespace-nowrap"
               >
-                [RULE: USE ALL GATES]
+                {t.badgeUseAllGates}
               </span>
             )}
             {level.outputFault === 'INVERT' && (
@@ -371,7 +376,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                 data-testid="hint-output-fault"
                 className="border border-[#FF5555] bg-[#FF5555]/15 px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wide text-[#FF5555] whitespace-nowrap"
               >
-                [! FAULT: INVERTED OUT]
+                {t.badgeFaultyOutHint}
               </span>
             )}
           </div>
@@ -399,7 +404,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                 className="inline-flex h-8 items-center gap-1.5 rounded-[2px] border border-[#00FF66] bg-[#0B0E11]/95 px-3 font-mono text-xs font-bold text-[#00FF66] hover:bg-[#00FF66]/15 cursor-pointer whitespace-nowrap"
               >
                 <Eye className="h-3.5 w-3.5" />
-                <span>[OK] VERIFIED — SHOW BANNER</span>
+                <span>{t.reopenBanner}</span>
               </button>
             )}
           </div>
@@ -412,7 +417,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
             onPointerDown={(e) => e.stopPropagation()}
             className="pointer-events-auto inline-flex w-fit flex-wrap items-center gap-1.5 border border-[#2B323B] bg-[#0B0E11]/95 px-2.5 py-1.5 font-mono text-xs"
             role="tablist"
-            aria-label="Circuit verification test cases"
+            aria-label={t.testsSummaryPrefix}
           >
             <span
               data-testid="test-suite-summary"
@@ -420,7 +425,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                 testSuite.allTestsPassed ? 'text-[#00FF66]' : 'text-[#8B98A8]'
               }`}
             >
-              TESTS {testSuite.passedCount}/{testSuite.totalCount}:
+              {t.testsSummaryPrefix} {testSuite.passedCount}/{testSuite.totalCount}:
             </span>
             {testSuite.testResults.map((tc, idx) => {
               const isActive = idx === activeTestIndex;
@@ -445,13 +450,13 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                         : 'border-[#2B323B] bg-[#11161C] text-[#8B98A8] hover:border-[#4B5868] hover:text-[#E6EDF3]'
                   }`}
                 >
-                  <span>{tc.label}</span>
+                  <span>{formatTestCaseLabel(idx, lang)}</span>
                   <span
                     className={
                       tc.passed ? 'text-[#00FF66]' : 'text-[#FF5555]'
                     }
                   >
-                    {tc.passed ? '[PASS]' : '[FAIL]'}
+                    {tc.passed ? t.testPassBadge : t.testFailBadge}
                   </span>
                 </button>
               );
@@ -486,36 +491,35 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
           } left-1/2 z-30 flex max-w-[92vw] -translate-x-1/2 flex-wrap sm:flex-nowrap items-center justify-center gap-3 border-2 border-[#00FF66] bg-[#0B0E11]/95 px-4 py-2 shadow-[4px_4px_0px_#000000]`}
         >
           <span className="font-mono text-xs font-bold tracking-wide text-[#00FF66] whitespace-nowrap">
-            [OK] CIRCUIT VERIFIED //{' '}
             {hasTestSuite
-              ? `ALL ${testSuite.totalCount} TESTS PASSED`
-              : 'TARGET MATCHED'}{' '}
-            -&gt; {hasNextLevel ? 'NEXT LEVEL' : 'ALL CHAPTERS CLEARED'}
+              ? t.victoryAllTests(testSuite.totalCount)
+              : t.victoryTargetMatched}{' '}
+            -&gt; {hasNextLevel ? t.victoryNextSuffix : t.victoryAllClearedSuffix}
           </span>
           {hasNextLevel ? (
             <button
               type="button"
               onClick={onNextLevel}
-              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[2px] bg-[#00FF66] px-3 text-[11px] font-bold tracking-wider text-[#0B0E11] hover:bg-[#33FF85] transition-colors cursor-pointer whitespace-nowrap"
-              style={{ fontFamily: 'var(--font-pixel)' }}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[2px] bg-[#00FF66] px-3 font-mono text-xs font-bold tracking-wider text-[#0B0E11] hover:bg-[#33FF85] transition-colors cursor-pointer whitespace-nowrap"
+              style={lang === 'en' ? { fontFamily: 'var(--font-pixel)', fontSize: '11px' } : undefined}
             >
-              <span>NEXT LEVEL</span>
+              <span>{t.nextLevelBtn}</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           ) : (
             <button
               type="button"
               onClick={onReplayFirstLevel}
-              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[2px] bg-[#00FF66] px-3 text-[11px] font-bold tracking-wider text-[#0B0E11] hover:bg-[#33FF85] transition-colors cursor-pointer whitespace-nowrap"
-              style={{ fontFamily: 'var(--font-pixel)' }}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[2px] bg-[#00FF66] px-3 font-mono text-xs font-bold tracking-wider text-[#0B0E11] hover:bg-[#33FF85] transition-colors cursor-pointer whitespace-nowrap"
+              style={lang === 'en' ? { fontFamily: 'var(--font-pixel)', fontSize: '11px' } : undefined}
             >
-              <span>REPLAY LVL 01</span>
+              <span>{t.replayBtn}</span>
             </button>
           )}
           <button
             type="button"
-            aria-label="Dismiss victory banner"
-            title="Hide banner to inspect circuit"
+            aria-label={t.dismissBannerAria}
+            title={t.dismissBannerTitle}
             onClick={() => setVictoryDismissed(true)}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[2px] border border-[#2B323B] text-[#8B98A8] hover:border-[#00FF66] hover:text-[#00FF66] transition-colors cursor-pointer"
           >
@@ -840,7 +844,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                     isEditableSource ? 'text-[#FFB000]' : 'text-[#6E7A8A]'
                   }`}
                 >
-                  {isEditableSource ? (isSourceInvalid ? 'ERR' : 'EDIT') : 'FIX'}
+                  {isEditableSource ? (isSourceInvalid ? t.nodeErr : t.nodeEdit) : t.nodeFix}
                 </span>
               )}
 
@@ -857,12 +861,12 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                   }`}
                 >
                   {isTargetMatchedVisual
-                    ? 'MATCH'
+                    ? t.nodeMatch
                     : isTargetPendingGates
-                      ? 'GATES!'
+                      ? t.nodeGates
                       : isTargetFaulty
-                        ? 'FAULT'
-                        : 'GOAL'}
+                        ? t.nodeFault
+                        : t.nodeGoal}
                 </span>
               )}
 
@@ -870,7 +874,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                 <button
                   type="button"
                   aria-label={`Delete ${node.label} gate`}
-                  title="Remove gate (refunds to inventory)"
+                  title={t.removeGateTitle}
                   onClick={(e) => {
                     e.stopPropagation();
                     onDeleteGate(node.id);
@@ -888,7 +892,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                 data-testid={targetKey === 'OUT' ? 'output-fault-badge' : `output-fault-badge-${targetKey}`}
                 className="border-b border-[#FF5555]/50 bg-[#FF5555]/15 px-2 py-1 text-center font-mono text-[10px] font-bold tracking-wider text-[#FF7B7B]"
               >
-                [! FAULT: INVERTED]
+                {t.badgeFaultyOutNode}
               </div>
             )}
 
@@ -942,7 +946,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                 return (
                   <div className="flex w-full flex-col gap-1 font-mono tabular-nums">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[#8B98A8]">TGT</span>
+                      <span className="text-[#8B98A8]">{t.rowTarget}</span>
                       <span
                         data-testid={
                           targetKey === 'OUT'
@@ -956,7 +960,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                     </div>
                     {isTargetFaulty && (
                       <div className="flex items-center justify-between border-t border-[#2B323B] pt-1 text-[11px]">
-                        <span className="text-[#FF7B7B]">RAW</span>
+                        <span className="text-[#FF7B7B]">{t.rowRaw}</span>
                         <span
                           data-testid={
                             targetKey === 'OUT'
@@ -971,7 +975,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                     )}
                     <div className="flex items-center justify-between border-t border-[#2B323B] pt-1 text-[11px]">
                       <span className="text-[#8B98A8]">
-                        {isTargetFaulty ? 'IN (~RAW)' : 'IN'}
+                        {isTargetFaulty ? t.rowInFaulty : t.rowIn}
                       </span>
                       <span
                         data-testid={
